@@ -9,6 +9,7 @@ from u2flib_server.utils import websafe_decode
 from u2flib_server.u2f import (begin_registration, complete_registration,
                                begin_authentication, complete_authentication)
 from u2flib_server.attestation import MetadataProvider, create_resolver
+from u2flib_server.attestation.matchers import ExtensionMatcher
 from .jsobjects import (RegisterRequestData, RegisterResponseData,
                         SignRequestData, SignResponseData)
 from datetime import datetime
@@ -45,6 +46,21 @@ def get_attestation(cert):
     attestation = cache.get(key)
     if attestation is None:
         attestation = metadata.get_attestation(cert) or ''  # Cache "missing"
+
+        if attestation:
+            # Hack to verify if the Yubikey is a FIPS-140 key
+            matcher = ExtensionMatcher()
+
+            # Magic value for this OID retrieved from:
+            # https://support.yubico.com/support/solutions/articles/15000011059-yubikey-fips-series-technical-manual#2.5.7_U2F_Attestationw3gmnd
+            if matcher.matches(
+                cert,
+                parameters={'key': '1.3.6.1.4.1.41482.12'}
+            ):
+                attestation.fips140 = True
+            else:
+                attestation.fips140 = False
+
         cache.set(key, attestation, timeout=0)
     return attestation
 
@@ -60,6 +76,7 @@ def get_metadata(dev):
                 data['vendor'] = attestation.vendor_info
             if attestation.device_info:
                 data['device'] = attestation.device_info
+            data['fips104'] = attestation.fips140
         cache.set(key, data, timeout=0)
     return data
 
@@ -201,6 +218,10 @@ def _register_response(user_id, response_data):
     attestation = get_attestation(cert)
     if not app.config['ALLOW_UNTRUSTED'] and not attestation.trusted:
         raise exc.BadInputException('Device attestation not trusted')
+
+    if app.config['REQUIRE_FIPS140'] and not attestation.fips140:
+        raise exc.BadInputException('Device is not a FIPS140 yubikey')
+
     if user is None:
         app.logger.info('Creating user: %s/%s', client.name, user_id)
         user = User(user_id)

@@ -25,3 +25,6 @@ METADATA = '/etc/yubico/u2fval/metadata/'
 # Allow the use of untrusted (for which attestation cannot be verified using
 # the available trusted metadata) U2F devices.
 ALLOW_UNTRUSTED = False
+
+# Whether we require that the Yubikey is a FIPS-140 model or not
+REQUIRE_FIPS140 = False
