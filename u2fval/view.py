@@ -5,6 +5,8 @@ from .model import db, Client, User
 from .transactiondb import DBStore
 from flask import g, request, jsonify
 from cachelib import SimpleCache, MemcachedCache
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
 from u2flib_server.utils import websafe_decode
 from u2flib_server.u2f import (begin_registration, complete_registration,
                                begin_authentication, complete_authentication)
@@ -50,6 +52,9 @@ def get_attestation(cert):
         if attestation:
             # Hack to verify if the Yubikey is a FIPS-140 key
             matcher = ExtensionMatcher()
+
+            if isinstance(cert, bytes):
+                cert = x509.load_der_x509_certificate(cert, default_backend())
 
             # Magic value for this OID retrieved from:
             # https://support.yubico.com/support/solutions/articles/15000011059-yubikey-fips-series-technical-manual#2.5.7_U2F_Attestationw3gmnd
