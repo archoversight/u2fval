@@ -81,7 +81,7 @@ def get_metadata(dev):
                 data['vendor'] = attestation.vendor_info
             if attestation.device_info:
                 data['device'] = attestation.device_info
-            data['fips104'] = attestation.fips140
+            data['fips140'] = attestation.fips140
         cache.set(key, data, timeout=0)
     return data
 
@@ -221,6 +221,7 @@ def _register_response(user_id, response_data):
     registration, cert = complete_registration(
         request_data, register_response, client.valid_facets)
     attestation = get_attestation(cert)
+
     if not app.config['ALLOW_UNTRUSTED'] and not attestation.trusted:
         raise exc.BadInputException('Device attestation not trusted')
 
